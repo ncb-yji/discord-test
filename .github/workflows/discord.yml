@@ -23,14 +23,36 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
           COMMIT_SHA=$(git rev-parse --short HEAD)
 
+          # GitHub ID → 닉네임 매핑
+          case "$AUTHOR" in
+            ncb-yji)
+              NICKNAME="양정인"
+              ;;
+            leehj7739)
+              NICKNAME="이희준"
+              ;;
+            jihun-01)
+              NICKNAME="최지훈"
+              ;;
+            naGGuri)
+              NICKNAME="나희수"
+              ;;
+            hyeonjinleeluck)
+              NICKNAME="이현진"
+              ;;
+            *)
+              NICKNAME="$AUTHOR"
+              ;;
+          esac
+
           # merge 여부 감지 (메시지에 'Merge branch' 포함되어 있으면 merge로 처리)
           if echo "$COMMIT_MESSAGE" | grep -q "^Merge branch"; then
             # 예시 메시지: Merge branch 'feature/login' into develop
             FROM_BRANCH=$(echo "$COMMIT_MESSAGE" | sed -n "s/^Merge branch '\(.*\)' into .*/\1/p")
             TO_BRANCH="$BRANCH_NAME"
-            MESSAGE="🔀 **Merge 발생!**\n👤 작성자: \`$AUTHOR\`\n🌿 \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n🔢 커밋: \`$COMMIT_SHA\`"
+            MESSAGE="🔀 **Merge 알림**\n 작성자: \`$AUTHOR\`\n \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n Hash: \`$COMMIT_SHA\`"
           else
-            MESSAGE="📝 **Push 발생**\n👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 커밋: \`$COMMIT_SHA\`"
+            MESSAGE="📌 **Push 알림**\n 작성자: \`$AUTHOR\`\n 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n Hash: \`$COMMIT_SHA\`"
           fi
 
           curl -H "Content-Type: application/json" \
