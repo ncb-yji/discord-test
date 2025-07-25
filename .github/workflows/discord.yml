@@ -22,7 +22,7 @@ jobs:
           BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
           AUTHOR="${{ github.actor }}"
 
-          MESSAGE="👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`"
+          MESSAGE="📝 **커밋 알림**\n\n👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`"
 
           curl -H "Content-Type: application/json" \
                -X POST \
