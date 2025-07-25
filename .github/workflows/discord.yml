@@ -25,7 +25,6 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
           COMMIT_SHA=$(git rev-parse --short HEAD)
 
-          # GitHub ID → 닉네임 매핑
           case "$AUTHOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
@@ -35,9 +34,8 @@ jobs:
             *) NICKNAME="$AUTHOR" ;;
           esac
 
-          # HEAD가 머지 커밋인지 확인 (부모가 2개 이상 → merge)
+          # Merge 여부 확인 (부모가 2개 이상인 커밋)
           PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | wc -w)
-
           if [ "$PARENT_COUNT" -gt 2 ]; then
             TYPE="🔀 MERGE"
           else
