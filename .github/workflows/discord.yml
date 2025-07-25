@@ -1,30 +1,50 @@
-- name: Send notification to Discord
-  env:
-    DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-  run: |
-    BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
-    AUTHOR="${{ github.actor }}"
-    COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
-    COMMIT_SHA=$(git rev-parse --short HEAD)
+name: Notify Discord with Nickname
 
-    # GitHub ID → 닉네임 매핑
-    case "$AUTHOR" in
-      ncb-yji) NICKNAME="양정인" ;;
-      leehj7739) NICKNAME="이희준" ;;
-      jihun-01) NICKNAME="최지훈" ;;
-      naGGuri) NICKNAME="나희수" ;;
-      hyeonjinleeluck) NICKNAME="이현진" ;;
-      *) NICKNAME="$AUTHOR" ;;
-    esac
+on:
+  push:
+    branches:
+      - main
+      - release
+      - develop
 
-    # Merge 감지 (branch merge or PR merge 모두 포함)
-    if echo "$COMMIT_MESSAGE" | grep -Eq "^Merge (branch|pull request)"; then
-      MESSAGE="🔀 **MERGE Detected**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 Hash: \`$COMMIT_SHA\`"
-    else
-      MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n- 작성자: \`$NICKNAME\`\n- 메시지: \`$COMMIT_MESSAGE\`\n- Hash: \`$COMMIT_SHA\`"
-    fi
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (full history for merge detection)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    curl -H "Content-Type: application/json" \
-         -X POST \
-         -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot-$COMMIT_SHA\"}" \
-         "$DISCORD_WEBHOOK"
+      - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
+          AUTHOR="${{ github.actor }}"
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+
+          # GitHub ID → 닉네임 매핑
+          case "$AUTHOR" in
+            ncb-yji) NICKNAME="양정인" ;;
+            leehj7739) NICKNAME="이희준" ;;
+            jihun-01) NICKNAME="최지훈" ;;
+            naGGuri) NICKNAME="나희수" ;;
+            hyeonjinleeluck) NICKNAME="이현진" ;;
+            *) NICKNAME="$AUTHOR" ;;
+          esac
+
+          # 머지 커밋인지 확인 (부모가 2개 이상이면 merge)
+          PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | wc -w)
+
+          if [ "$PARENT_COUNT" -gt 2 ]; then
+            MESSAGE="🔀 **MERGE Detected**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 Hash: \`$COMMIT_SHA\`"
+          else
+            MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n- 작성자: \`$NICKNAME\`\n- 메시지: \`$COMMIT_MESSAGE\`\n- Hash: \`$COMMIT_SHA\`"
+          fi
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot-$COMMIT_SHA\"}" \
+               "$DISCORD_WEBHOOK"
