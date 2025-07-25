@@ -1,4 +1,4 @@
-name: Notify Discord on Push
+name: Notify Discord with Nickname
 
 on:
   push:
@@ -45,17 +45,17 @@ jobs:
               ;;
           esac
 
-          # merge 여부 감지 (메시지에 'Merge branch' 포함되어 있으면 merge로 처리)
+          # Merge 감지
           if echo "$COMMIT_MESSAGE" | grep -q "^Merge branch"; then
-            # 예시 메시지: Merge branch 'feature/login' into develop
             FROM_BRANCH=$(echo "$COMMIT_MESSAGE" | sed -n "s/^Merge branch '\(.*\)' into .*/\1/p")
             TO_BRANCH="$BRANCH_NAME"
-            MESSAGE="🔀 **Merge 알림**\n 작성자: \`$AUTHOR\`\n \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n Hash: \`$COMMIT_SHA\`"
+            MESSAGE="🔀 **Merge 발생!**\n👤 작성자: \`$NICKNAME\`\n🌿 \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n🔢 커밋: \`$COMMIT_SHA\`"
           else
-            MESSAGE="📌 **Push 알림**\n 작성자: \`$AUTHOR\`\n 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n Hash: \`$COMMIT_SHA\`"
+            MESSAGE="📝 **Push 발생**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 커밋: \`$COMMIT_SHA\`"
           fi
 
           curl -H "Content-Type: application/json" \
                -X POST \
                -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot-$COMMIT_SHA\"}" \
                "$DISCORD_WEBHOOK"
+
