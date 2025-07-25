@@ -1,19 +1,30 @@
-name: Notify Discord
+name: Notify Discord on Push
 
 on:
   push:
     branches:
-      - main  # 또는 원하는 브랜치
+      - main
+      - release
+      - develop  # 원하는 브랜치 추가 가능
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Send message to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
+          AUTHOR="${{ github.actor }}"
+
+          MESSAGE="📝 **커밋 알림**\n\n👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`"
+
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d '{"content": "**새 커밋이 푸시되었습니다!**"}' \
+               -d "{\"content\": \"$MESSAGE\"}" \
                "$DISCORD_WEBHOOK"
