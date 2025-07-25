@@ -1,0 +1,19 @@
+name: Notify Discord
+
+on:
+  push:
+    branches:
+      - main  # 또는 원하는 브랜치
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d '{"content": "**새 커밋이 푸시되었습니다!**"}' \
+               $DISCORD_WEBHOOK
