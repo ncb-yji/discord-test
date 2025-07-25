@@ -1,0 +1,51 @@
+name: Notify Discord on Branch Create/Delete (main, release, develop only)
+
+on:
+  create:
+    branches:
+      - '**'
+  delete:
+    branches:
+      - '**'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord for main/release/develop create or delete only
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          EVENT_NAME="${{ github.event_name }}"
+          BRANCH_NAME="${{ github.ref_name }}"
+          AUTHOR="${{ github.actor }}"
+
+          # GitHub ID → 닉네임 매핑
+          case "$AUTHOR" in
+            ncb-yji) NICKNAME="양정인" ;;
+            leehj7739) NICKNAME="이희준" ;;
+            jihun-01) NICKNAME="최지훈" ;;
+            naGGuri) NICKNAME="나희수" ;;
+            hyeonjinleeluck) NICKNAME="이현진" ;;
+            *) NICKNAME="$AUTHOR" ;;
+          esac
+
+          # 브랜치 이름이 감시 대상인지 확인
+          if [[ "$BRANCH_NAME" != "main" && "$BRANCH_NAME" != "release" && "$BRANCH_NAME" != "develop" ]]; then
+            echo "📭 감시 대상 아님: $BRANCH_NAME 브랜치. 알림 생략."
+            exit 0
+          fi
+
+          # 알림 메시지 생성
+          if [ "$EVENT_NAME" = "create" ]; then
+            MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
+          elif [ "$EVENT_NAME" = "delete" ]; then
+            MESSAGE="🗑️ **브랜치 삭제**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
+          else
+            MESSAGE="⚠️ 알 수 없는 이벤트 \`$EVENT_NAME\`"
+          fi
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"$MESSAGE\", \"username\": \"BranchBot-$BRANCH_NAME\"}" \
+               "$DISCORD_WEBHOOK"
