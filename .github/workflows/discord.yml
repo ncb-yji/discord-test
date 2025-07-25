@@ -1,11 +1,11 @@
-name: Notify Discord on Push
+name: Notify Discord with Unique Sender
 
 on:
   push:
     branches:
       - main
       - release
-      - develop  # 원하는 브랜치 추가 가능
+      - develop
 
 jobs:
   notify:
@@ -22,9 +22,16 @@ jobs:
           BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
           AUTHOR="${{ github.actor }}"
 
-          MESSAGE="📝 **커밋 알림**\n\n👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`"
+          # 고유한 username을 위해 SHA 일부 사용
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-6)
+          SENDER_NAME="GitBot-$SHORT_SHA"
+
+          MESSAGE="📝 **커밋 알림**\n👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`"
 
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"$MESSAGE\"}" \
+               -d "{
+                 \"content\": \"$MESSAGE\",
+                 \"username\": \"$SENDER_NAME\"
+               }" \
                "$DISCORD_WEBHOOK"
