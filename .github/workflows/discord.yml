@@ -51,7 +51,7 @@ jobs:
             TO_BRANCH="$BRANCH_NAME"
             MESSAGE="🔀 **Merge : \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n**\n- 작성자: \`$NICKNAME\`\n- Hash: \`$COMMIT_SHA\`"
           else
-            MESSAGE="📌 **Push : \`$BRANCH_NAME\`\n**\n- 작성자: \`$NICKNAME\`- 메시지: \`$COMMIT_MESSAGE\`\n- Hash: \`$COMMIT_SHA\`"
+            MESSAGE="📌 **Push : \`$BRANCH_NAME\`\n**\n- 작성자: \`$NICKNAME\`\n- 메시지: \`$COMMIT_MESSAGE\`\n- Hash: \`$COMMIT_SHA\`"
           fi
 
           curl -H "Content-Type: application/json" \
