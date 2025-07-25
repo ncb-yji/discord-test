@@ -16,4 +16,4 @@ jobs:
           curl -H "Content-Type: application/json" \
                -X POST \
                -d '{"content": "**새 커밋이 푸시되었습니다!**"}' \
-               $DISCORD_WEBHOOK
+               "$DISCORD_WEBHOOK"
