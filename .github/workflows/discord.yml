@@ -1,0 +1,39 @@
+name: Notify Discord on Push
+
+on:
+  push:
+    branches:
+      - main
+      - release
+      - develop
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Send notification to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
+          AUTHOR="${{ github.actor }}"
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+
+          # merge 여부 감지 (메시지에 'Merge branch' 포함되어 있으면 merge로 처리)
+          if echo "$COMMIT_MESSAGE" | grep -q "^Merge branch"; then
+            # 예시 메시지: Merge branch 'feature/login' into develop
+            FROM_BRANCH=$(echo "$COMMIT_MESSAGE" | sed -n "s/^Merge branch '\(.*\)' into .*/\1/p")
+            TO_BRANCH="$BRANCH_NAME"
+            MESSAGE="🔀 **Merge 발생!**\n👤 작성자: \`$AUTHOR\`\n🌿 \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n🔢 커밋: \`$COMMIT_SHA\`"
+          else
+            MESSAGE="📝 **Push 발생**\n👤 작성자: \`$AUTHOR\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 커밋: \`$COMMIT_SHA\`"
+          fi
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot-$COMMIT_SHA\"}" \
+               "$DISCORD_WEBHOOK"
