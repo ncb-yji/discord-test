@@ -49,9 +49,9 @@ jobs:
           if echo "$COMMIT_MESSAGE" | grep -q "^Merge branch"; then
             FROM_BRANCH=$(echo "$COMMIT_MESSAGE" | sed -n "s/^Merge branch '\(.*\)' into .*/\1/p")
             TO_BRANCH="$BRANCH_NAME"
-            MESSAGE="🔀 **Merge 발생!**\n👤 작성자: \`$NICKNAME\`\n🌿 \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n🔢 커밋: \`$COMMIT_SHA\`"
+            MESSAGE="🔀 **Merge : \`$FROM_BRANCH\` → \`$TO_BRANCH\`\n**\n- 작성자: \`$NICKNAME\`\n- Hash: \`$COMMIT_SHA\`"
           else
-            MESSAGE="📝 **Push 발생**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 커밋: \`$COMMIT_SHA\`"
+            MESSAGE="📌 **Push**\n- 작성자: \`$NICKNAME\`\n- 브랜치: \`$BRANCH_NAME\`\n- 메시지: \`$COMMIT_MESSAGE\`\n- Hash: \`$COMMIT_SHA\`"
           fi
 
           curl -H "Content-Type: application/json" \
