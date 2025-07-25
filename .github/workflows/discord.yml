@@ -11,7 +11,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code (full history for merge detection)
+      - name: Checkout code (full history)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -20,7 +20,7 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}")
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           AUTHOR="${{ github.actor }}"
           COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
           COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -35,14 +35,16 @@ jobs:
             *) NICKNAME="$AUTHOR" ;;
           esac
 
-          # 머지 커밋인지 확인 (부모가 2개 이상이면 merge)
+          # HEAD가 머지 커밋인지 확인 (부모가 2개 이상 → merge)
           PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | wc -w)
 
           if [ "$PARENT_COUNT" -gt 2 ]; then
-            MESSAGE="🔀 **MERGE Detected**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 Hash: \`$COMMIT_SHA\`"
+            TYPE="🔀 MERGE"
           else
-            MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n- 작성자: \`$NICKNAME\`\n- 메시지: \`$COMMIT_MESSAGE\`\n- Hash: \`$COMMIT_SHA\`"
+            TYPE="📌 PUSH"
           fi
+
+          MESSAGE="**$TYPE : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 Hash: \`$COMMIT_SHA\`"
 
           curl -H "Content-Type: application/json" \
                -X POST \
