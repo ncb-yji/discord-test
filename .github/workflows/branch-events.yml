@@ -7,6 +7,9 @@ on:
   delete:
     branches:
       - '**'
+  push:
+    branches:
+      - '**'  # 웹에서 만든 브랜치는 create 대신 push로 잡힐 수 있음
 
 jobs:
   notify:
@@ -20,14 +23,16 @@ jobs:
           REF_TYPE: ${{ github.event.ref_type }}
           REF_NAME: ${{ github.ref_name }}
           ACTOR: ${{ github.actor }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
+          # 브랜치명 추출
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+
           # 브랜치가 아니면 무시
-          if [[ "$REF_TYPE" != "branch" ]]; then
-            echo "⏩ 감지된 리소스는 브랜치가 아님: $REF_TYPE. 종료"
+          if [[ "$EVENT_NAME" != "push" && "$REF_TYPE" != "branch" ]]; then
+            echo "⏩ 감지된 리소스는 브랜치가 아님. 종료"
             exit 0
           fi
-
-          BRANCH_NAME="$REF_NAME"
 
           # 닉네임 매핑
           case "$ACTOR" in
@@ -39,16 +44,20 @@ jobs:
             *) NICKNAME="$ACTOR" ;;
           esac
 
-          # 감시 대상 브랜치인지 확인
-          SHOULD_NOTIFY=false
-          if [[ "$BRANCH_NAME" == "release" || "$BRANCH_NAME" == "develop" ]]; then
+          # 감시 대상인지 확인
+          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "release" || "$BRANCH_NAME" == "develop" ]]; then
             SHOULD_NOTIFY=true
           elif [[ "$BRANCH_NAME" == main* || "$BRANCH_NAME" == release* ]]; then
             SHOULD_NOTIFY=true
+          else
+            SHOULD_NOTIFY=false
           fi
+
+          # temp 브랜치는 무조건 무시
           if [[ "$BRANCH_NAME" == temp* ]]; then
             SHOULD_NOTIFY=false
           fi
+
           if [ "$SHOULD_NOTIFY" = false ]; then
             echo "📭 감시 대상 아님: $BRANCH_NAME"
             exit 0
@@ -56,29 +65,14 @@ jobs:
 
           # 메시지 구성
           if [ "$EVENT_NAME" = "create" ]; then
-            git fetch --all
-            HEAD_SHA=$(git rev-parse origin/$BRANCH_NAME)
-
-            PARENT_BRANCH=""
-            for base in main release develop; do
-              if git show-ref --quiet refs/remotes/origin/$base; then
-                BASE_SHA=$(git rev-parse origin/$base)
-                if [ "$HEAD_SHA" = "$BASE_SHA" ]; then
-                  PARENT_BRANCH="$base"
-                  break
-                fi
-              fi
-            done
-
-            if [ -n "$PARENT_BRANCH" ]; then
-              MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n🔀 기준 브랜치: \`$PARENT_BRANCH\`"
-            else
-              MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`\n❓ 기준 브랜치: 추정 불가"
-            fi
+            MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
           elif [ "$EVENT_NAME" = "delete" ]; then
             MESSAGE="🗑️ **브랜치 삭제**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            MESSAGE="📦 **브랜치 생성(PUSH 기반)**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
           else
-            MESSAGE="⚠️ 알 수 없는 이벤트 \`$EVENT_NAME\`"
+            echo "⚠️ 처리하지 않는 이벤트: $EVENT_NAME"
+            exit 0
           fi
 
           curl -H "Content-Type: application/json" \
