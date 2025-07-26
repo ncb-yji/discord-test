@@ -1,4 +1,4 @@
-name: Notify Discord on Push/Merge to main, release, develop
+name: Notify Discord on Push (main, release, develop only)
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 전체 이력 필요
+          fetch-depth: 0
 
       - name: Send notification to Discord
         env:
@@ -25,7 +25,7 @@ jobs:
           GITHUB_AFTER: ${{ github.event.after }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          # 닉네임 매핑
+          # GitHub ID → 닉네임 매핑
           case "$GITHUB_ACTOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
@@ -35,33 +35,15 @@ jobs:
             *) NICKNAME="$GITHUB_ACTOR" ;;
           esac
 
-          # 커밋 목록 추출
+          # 커밋 목록 출력
           COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER || echo "")
-          LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
-          LAST_COMMIT_HASH=$(git log -1 --pretty=%h)
-
-          # 커밋이 없다면 마지막 커밋 하나라도 출력
           if [ -z "$COMMITS" ]; then
+            LAST_COMMIT_HASH=$(git log -1 --pretty=%h)
+            LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
             COMMITS="- \`$LAST_COMMIT_HASH\` $LAST_COMMIT_MSG"
           fi
 
-          # Merge 여부 감지 (메시지와 커밋 수로 추정)
-          COMMIT_COUNT=$(git rev-list --count $GITHUB_BEFORE..$GITHUB_AFTER)
-          IS_MERGE=false
-
-          if echo "$LAST_COMMIT_MSG" | grep -Eq "^Merge (branch|pull request)"; then
-            IS_MERGE=true
-          elif [ "$COMMIT_COUNT" -gt 1 ]; then
-            IS_MERGE=true
-          fi
-
-          if $IS_MERGE; then
-            TITLE="🔀 MERGE : (source) → \`$GITHUB_REF_NAME\`"
-          else
-            TITLE="📌 PUSH : \`$GITHUB_REF_NAME\`"
-          fi
-
-          MESSAGE="$TITLE\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
+          MESSAGE="📌 PUSH : \`$GITHUB_REF_NAME\`\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
 
           curl -H "Content-Type: application/json" \
                -X POST \
