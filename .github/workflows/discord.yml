@@ -25,7 +25,7 @@ jobs:
           GITHUB_AFTER: ${{ github.event.after }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          # GitHub ID → 닉네임 매핑
+          # 닉네임 매핑
           case "$GITHUB_ACTOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
@@ -35,15 +35,18 @@ jobs:
             *) NICKNAME="$GITHUB_ACTOR" ;;
           esac
 
-          # 커밋 목록 출력
-          COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER || echo "")
+          # 커밋 내역 확보 (최대 10개 제한 + fallback)
+          COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER -n 10 2>/dev/null || echo "")
           if [ -z "$COMMITS" ]; then
             LAST_COMMIT_HASH=$(git log -1 --pretty=%h)
             LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
             COMMITS="- \`$LAST_COMMIT_HASH\` $LAST_COMMIT_MSG"
           fi
 
-          MESSAGE="📌 PUSH : \`$GITHUB_REF_NAME\`\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
+          # Discord 메시지 escape (큰따옴표, 개행 등)
+          COMMITS_ESCAPED=$(echo "$COMMITS" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+
+          MESSAGE="📌 PUSH : \`$GITHUB_REF_NAME\`\n👤 작성자: \`$NICKNAME\`\n$COMMITS_ESCAPED"
 
           curl -H "Content-Type: application/json" \
                -X POST \
