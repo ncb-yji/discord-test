@@ -44,7 +44,7 @@ jobs:
           fi
 
           # 메시지 작성 및 전송
-          MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
+          MESSAGE="🔀 **PUSH : \`$BRANCH_NAME\` branch**\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
           ESCAPED=$(echo "$MESSAGE" | sed ':a;N;$!ba;s/\n/\\n/g')
 
           curl -H "Content-Type: application/json" \
