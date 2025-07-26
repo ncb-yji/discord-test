@@ -11,13 +11,14 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+
     steps:
       - name: Notify only selected branches
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.event.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
+          REF_NAME: ${{ github.event.ref }}  # 정확한 브랜치명
           ACTOR: ${{ github.actor }}
         run: |
           # 브랜치가 아니면 무시
@@ -26,7 +27,10 @@ jobs:
             exit 0
           fi
 
-          # GitHub ID → 닉네임 매핑
+          # 삭제된 브랜치 이름 추출
+          BRANCH_NAME="$REF_NAME"
+
+          # 닉네임 매핑
           case "$ACTOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
@@ -36,25 +40,30 @@ jobs:
             *) NICKNAME="$ACTOR" ;;
           esac
 
-          # 감시 대상 브랜치 확인
-          if [[ "$REF_NAME" = "release" || "$REF_NAME" = "develop" ]]; then
+          # 감시 대상 브랜치인지 확인
+          if [[ "$BRANCH_NAME" == "release" || "$BRANCH_NAME" == "develop" ]]; then
             SHOULD_NOTIFY=true
-          elif [[ "$REF_NAME" == main* || "$REF_NAME" == release* ]]; then
+          elif [[ "$BRANCH_NAME" == main* || "$BRANCH_NAME" == release* ]]; then
             SHOULD_NOTIFY=true
           else
             SHOULD_NOTIFY=false
           fi
 
+          # temp 브랜치 무시
+          if [[ "$BRANCH_NAME" == temp* ]]; then
+            SHOULD_NOTIFY=false
+          fi
+
           if [ "$SHOULD_NOTIFY" = false ]; then
-            echo "📭 감시 대상 아님: $REF_NAME"
+            echo "📭 감시 대상 아님: $BRANCH_NAME"
             exit 0
           fi
 
-          # 메시지 생성
+          # 메시지 구성
           if [ "$EVENT_NAME" = "create" ]; then
-            MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$REF_NAME\`"
+            MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
           elif [ "$EVENT_NAME" = "delete" ]; then
-            MESSAGE="🗑️ **브랜치 삭제**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$REF_NAME\`"
+            MESSAGE="🗑️ **브랜치 삭제**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$BRANCH_NAME\`"
           else
             MESSAGE="⚠️ 알 수 없는 이벤트 \`$EVENT_NAME\`"
           fi
