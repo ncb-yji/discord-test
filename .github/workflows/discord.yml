@@ -1,4 +1,4 @@
-name: Notify Discord with Nickname (Merge-Aware)
+name: Notify Discord on Push/Merge to main, release, develop
 
 on:
   push:
@@ -10,43 +10,59 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # merge 감지와 여러 커밋을 위해 전체 히스토리 필요
 
-      - name: Send Discord Notification
+      - name: Send notification to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_BEFORE: ${{ github.event.before }}
+          GITHUB_AFTER: ${{ github.event.after }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-          AUTHOR="${{ github.actor }}"
-          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-
           # 닉네임 매핑
-          case "$AUTHOR" in
+          case "$GITHUB_ACTOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
             jihun-01) NICKNAME="최지훈" ;;
             naGGuri) NICKNAME="나희수" ;;
             hyeonjinleeluck) NICKNAME="이현진" ;;
-            *) NICKNAME="$AUTHOR" ;;
+            *) NICKNAME="$GITHUB_ACTOR" ;;
           esac
 
-          # HEAD 커밋이 머지 커밋인지 판단 (부모 2개 이상)
-          PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | wc -w)
+          # 커밋 메시지 수집
+          COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER)
 
-          if [ "$PARENT_COUNT" -gt 2 ]; then
-            TYPE="🔀 MERGE"
-          else
-            TYPE="📌 PUSH"
+          # MERGE 여부 감지
+          IS_MERGE=false
+          MERGE_FROM=""
+          MERGE_TO="$GITHUB_REF_NAME"
+
+          # 가장 마지막 커밋 메시지
+          LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
+
+          if echo "$LAST_COMMIT_MSG" | grep -qE "^Merge (branch|pull request)"; then
+            IS_MERGE=true
+            # Merge branch 'source' into 'target'
+            MERGE_FROM=$(echo "$LAST_COMMIT_MSG" | sed -n "s/^Merge branch '\(.*\)' into.*/\1/p")
+            # GitHub Desktop이나 squash merge인 경우 대비
+            [ -z "$MERGE_FROM" ] && MERGE_FROM="(unknown)"
           fi
 
-          MESSAGE="**$TYPE : \`$BRANCH_NAME\`**\n 작성자: \`$NICKNAME\`\n 메시지: \`$COMMIT_MESSAGE\`\n Hash: \`$COMMIT_SHA\`"
+          if $IS_MERGE; then
+            TITLE="🔀 MERGE : \`$MERGE_FROM\` → \`$MERGE_TO\`"
+          else
+            TITLE="📌 PUSH : \`$MERGE_TO\`"
+          fi
+
+          MESSAGE="$TITLE\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
 
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot-$COMMIT_SHA\"}" \
+               -d "{\"content\": \"$MESSAGE\", \"username\": \"GitNotifier\"}" \
                "$DISCORD_WEBHOOK"
