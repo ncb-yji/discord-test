@@ -1,44 +1,54 @@
-name: Notify Discord on Branch Create/Delete (main, release, develop only)
+name: Notify Discord on Selected Branch Create/Delete
 
 on:
   create:
-    tags: []
+    branches:
+      - '**'
   delete:
-    tags: []
+    branches:
+      - '**'
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Discord for selected branches only
+      - name: Notify only selected branches
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.event.ref_type }}
           REF_NAME: ${{ github.ref_name }}
-          AUTHOR: ${{ github.actor }}
+          ACTOR: ${{ github.actor }}
         run: |
-          # 브랜치만 추적
+          # 브랜치가 아니면 무시
           if [[ "$REF_TYPE" != "branch" ]]; then
-            echo "🚫 감지된 리소스는 브랜치가 아닙니다: $REF_TYPE. 종료."
+            echo "⏩ 감지된 리소스는 브랜치가 아님: $REF_TYPE. 종료"
             exit 0
           fi
 
-          # 추적할 브랜치만 필터링
-          if [[ "$REF_NAME" != "main" && "$REF_NAME" != "release" && "$REF_NAME" != "develop" ]]; then
-            echo "📭 감시 대상이 아닌 브랜치: $REF_NAME. 종료."
-            exit 0
-          fi
-
-          # 작성자 닉네임 매핑
-          case "$AUTHOR" in
+          # GitHub ID → 닉네임 매핑
+          case "$ACTOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
             jihun-01) NICKNAME="최지훈" ;;
             naGGuri) NICKNAME="나희수" ;;
             hyeonjinleeluck) NICKNAME="이현진" ;;
-            *) NICKNAME="$AUTHOR" ;;
+            *) NICKNAME="$ACTOR" ;;
           esac
+
+          # 감시 대상 브랜치 확인
+          if [[ "$REF_NAME" = "release" || "$REF_NAME" = "develop" ]]; then
+            SHOULD_NOTIFY=true
+          elif [[ "$REF_NAME" == main* || "$REF_NAME" == release* ]]; then
+            SHOULD_NOTIFY=true
+          else
+            SHOULD_NOTIFY=false
+          fi
+
+          if [ "$SHOULD_NOTIFY" = false ]; then
+            echo "📭 감시 대상 아님: $REF_NAME"
+            exit 0
+          fi
 
           # 메시지 생성
           if [ "$EVENT_NAME" = "create" ]; then
@@ -51,5 +61,5 @@ jobs:
 
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"$MESSAGE\", \"username\": \"BranchBot-$REF_NAME\"}" \
+               -d "{\"content\": \"$MESSAGE\", \"username\": \"BranchWatcher\"}" \
                "$DISCORD_WEBHOOK"
