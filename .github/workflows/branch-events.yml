@@ -2,21 +2,15 @@ name: Notify Discord on Branch Create/Delete (main, release, develop only)
 
 on:
   create:
-    branches:
-      - main
-      - release
-      - develop
+    tags: []
   delete:
-    branches:
-      - main
-      - release
-      - develop
+    tags: []
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Discord for selected branches
+      - name: Notify Discord for selected branches only
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           EVENT_NAME: ${{ github.event_name }}
@@ -24,11 +18,19 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           AUTHOR: ${{ github.actor }}
         run: |
+          # 브랜치만 추적
           if [[ "$REF_TYPE" != "branch" ]]; then
             echo "🚫 감지된 리소스는 브랜치가 아닙니다: $REF_TYPE. 종료."
             exit 0
           fi
 
+          # 추적할 브랜치만 필터링
+          if [[ "$REF_NAME" != "main" && "$REF_NAME" != "release" && "$REF_NAME" != "develop" ]]; then
+            echo "📭 감시 대상이 아닌 브랜치: $REF_NAME. 종료."
+            exit 0
+          fi
+
+          # 작성자 닉네임 매핑
           case "$AUTHOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
@@ -38,6 +40,7 @@ jobs:
             *) NICKNAME="$AUTHOR" ;;
           esac
 
+          # 메시지 생성
           if [ "$EVENT_NAME" = "create" ]; then
             MESSAGE="🆕 **브랜치 생성**\n👤 작성자: \`$NICKNAME\`\n🌿 브랜치: \`$REF_NAME\`"
           elif [ "$EVENT_NAME" = "delete" ]; then
