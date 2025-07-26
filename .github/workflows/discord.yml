@@ -15,14 +15,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 전체 커밋 내역을 가져와야 여러 커밋 추출 가능
+          fetch-depth: 0  # 전체 히스토리 필요
 
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           ACTOR: ${{ github.actor }}
           BRANCH_NAME: ${{ github.ref_name }}
-          COMMIT_SHA: ${{ github.sha }}
         run: |
           # 작성자 닉네임 매핑
           case "$ACTOR" in
@@ -34,28 +33,32 @@ jobs:
             *) NICKNAME="$ACTOR" ;;
           esac
 
-          # 현재 브랜치의 커밋 수 확인
-          NUM_COMMITS=$(git rev-list --count HEAD)
-          if [ "$NUM_COMMITS" -eq 1 ]; then
+          # 이전 브랜치 상태 가져오기
+          git fetch origin "$BRANCH_NAME"
+
+          # 첫 커밋인 경우 알림 생략
+          if [ "$(git rev-list --count HEAD)" -eq 1 ]; then
             echo "🔕 최초 커밋이므로 push 알림 생략"
             exit 0
           fi
 
-          # 현재 push에서 포함된 커밋 리스트 추출 (HEAD~n..HEAD)
-          # GitHub에서는 GITHUB_SHA가 마지막 커밋
-          COMMIT_RANGE=$(git rev-list --reverse --no-merges --pretty=format:"%h %s" origin/${BRANCH_NAME}..HEAD)
+          # 브랜치 비교 범위 설정
+          RANGE="origin/${BRANCH_NAME}..HEAD"
+          COMMITS=$(git log --pretty=format:"- %h %s" $RANGE)
 
-          if [ -z "$COMMIT_RANGE" ]; then
-            echo "❗커밋 내역이 비어 있음"
+          if [ -z "$COMMITS" ]; then
+            echo "❗커밋 내역 없음"
             exit 0
           fi
 
-          # 메시지 포맷팅
-          MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n"
-          MESSAGE+=$(git log origin/${BRANCH_NAME}..HEAD --pretty=format:"- %h %s" | sed ':a;N;$!ba;s/\n/\\n/g')
+          # 메시지 작성
+          MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
 
-          # Discord로 전송
+          # 줄바꿈 처리
+          MESSAGE_ESCAPED=$(echo "$MESSAGE" | sed ':a;N;$!ba;s/\n/\\n/g')
+
+          # Discord Webhook 전송
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot\"}" \
+               -d "{\"content\": \"$MESSAGE_ESCAPED\", \"username\": \"PushBot\"}" \
                "$DISCORD_WEBHOOK"
