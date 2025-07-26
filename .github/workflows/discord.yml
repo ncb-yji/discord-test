@@ -44,7 +44,7 @@ jobs:
             TYPE="📌 PUSH"
           fi
 
-          MESSAGE="**$TYPE : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n💬 메시지: \`$COMMIT_MESSAGE\`\n🔢 Hash: \`$COMMIT_SHA\`"
+          MESSAGE="**$TYPE : \`$BRANCH_NAME\`**\n 작성자: \`$NICKNAME\`\n 메시지: \`$COMMIT_MESSAGE\`\n Hash: \`$COMMIT_SHA\`"
 
           curl -H "Content-Type: application/json" \
                -X POST \
