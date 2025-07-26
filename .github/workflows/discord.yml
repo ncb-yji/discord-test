@@ -36,7 +36,7 @@ jobs:
           esac
 
           # 변경된 커밋 내역 추출 (최초 커밋 포함)
-          COMMITS=$(git log --pretty=format:"- %h %s"  "$BEFORE..$AFTER")
+          COMMITS=$(git log --pretty=format:"- %h  %s" "$BEFORE..$AFTER")
 
           if [ -z "$COMMITS" ]; then
             echo "❗커밋 내역이 없음"
@@ -44,7 +44,7 @@ jobs:
           fi
 
           # 메시지 작성 및 전송
-          MESSAGE="🔀 **PUSH : \`$BRANCH_NAME\` branch**\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
+          MESSAGE="🔀 **PUSH : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
           ESCAPED=$(echo "$MESSAGE" | sed ':a;N;$!ba;s/\n/\\n/g')
 
           curl -H "Content-Type: application/json" \
