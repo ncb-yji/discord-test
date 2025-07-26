@@ -15,7 +15,7 @@ jobs:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # merge 감지와 여러 커밋을 위해 전체 히스토리 필요
+          fetch-depth: 0  # 전체 이력 필요
 
       - name: Send notification to Discord
         env:
@@ -35,29 +35,30 @@ jobs:
             *) NICKNAME="$GITHUB_ACTOR" ;;
           esac
 
-          # 커밋 메시지 수집
-          COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER)
-
-          # MERGE 여부 감지
-          IS_MERGE=false
-          MERGE_FROM=""
-          MERGE_TO="$GITHUB_REF_NAME"
-
-          # 가장 마지막 커밋 메시지
+          # 커밋 목록 추출
+          COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER || echo "")
           LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
+          LAST_COMMIT_HASH=$(git log -1 --pretty=%h)
 
-          if echo "$LAST_COMMIT_MSG" | grep -qE "^Merge (branch|pull request)"; then
+          # 커밋이 없다면 마지막 커밋 하나라도 출력
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- \`$LAST_COMMIT_HASH\` $LAST_COMMIT_MSG"
+          fi
+
+          # Merge 여부 감지 (메시지와 커밋 수로 추정)
+          COMMIT_COUNT=$(git rev-list --count $GITHUB_BEFORE..$GITHUB_AFTER)
+          IS_MERGE=false
+
+          if echo "$LAST_COMMIT_MSG" | grep -Eq "^Merge (branch|pull request)"; then
             IS_MERGE=true
-            # Merge branch 'source' into 'target'
-            MERGE_FROM=$(echo "$LAST_COMMIT_MSG" | sed -n "s/^Merge branch '\(.*\)' into.*/\1/p")
-            # GitHub Desktop이나 squash merge인 경우 대비
-            [ -z "$MERGE_FROM" ] && MERGE_FROM="(unknown)"
+          elif [ "$COMMIT_COUNT" -gt 1 ]; then
+            IS_MERGE=true
           fi
 
           if $IS_MERGE; then
-            TITLE="🔀 MERGE : \`$MERGE_FROM\` → \`$MERGE_TO\`"
+            TITLE="🔀 MERGE : (source) → \`$GITHUB_REF_NAME\`"
           else
-            TITLE="📌 PUSH : \`$MERGE_TO\`"
+            TITLE="📌 PUSH : \`$GITHUB_REF_NAME\`"
           fi
 
           MESSAGE="$TITLE\n👤 작성자: \`$NICKNAME\`\n$COMMITS"
