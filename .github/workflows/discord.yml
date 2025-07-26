@@ -12,43 +12,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout full history
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 전체 커밋 내역을 가져와야 여러 커밋 추출 가능
 
-      - name: Send notification to Discord
+      - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_BEFORE: ${{ github.event.before }}
-          GITHUB_AFTER: ${{ github.event.after }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          # 닉네임 매핑
-          case "$GITHUB_ACTOR" in
+          # 작성자 닉네임 매핑
+          case "$ACTOR" in
             ncb-yji) NICKNAME="양정인" ;;
             leehj7739) NICKNAME="이희준" ;;
             jihun-01) NICKNAME="최지훈" ;;
             naGGuri) NICKNAME="나희수" ;;
             hyeonjinleeluck) NICKNAME="이현진" ;;
-            *) NICKNAME="$GITHUB_ACTOR" ;;
+            *) NICKNAME="$ACTOR" ;;
           esac
 
-          # 커밋 내역 확보 (최대 10개 제한 + fallback)
-          COMMITS=$(git log --pretty=format:"- \`%h\` %s" $GITHUB_BEFORE..$GITHUB_AFTER -n 10 2>/dev/null || echo "")
-          if [ -z "$COMMITS" ]; then
-            LAST_COMMIT_HASH=$(git log -1 --pretty=%h)
-            LAST_COMMIT_MSG=$(git log -1 --pretty=%s)
-            COMMITS="- \`$LAST_COMMIT_HASH\` $LAST_COMMIT_MSG"
+          # 현재 브랜치의 커밋 수 확인
+          NUM_COMMITS=$(git rev-list --count HEAD)
+          if [ "$NUM_COMMITS" -eq 1 ]; then
+            echo "🔕 최초 커밋이므로 push 알림 생략"
+            exit 0
           fi
 
-          # Discord 메시지 escape (큰따옴표, 개행 등)
-          COMMITS_ESCAPED=$(echo "$COMMITS" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          # 현재 push에서 포함된 커밋 리스트 추출 (HEAD~n..HEAD)
+          # GitHub에서는 GITHUB_SHA가 마지막 커밋
+          COMMIT_RANGE=$(git rev-list --reverse --no-merges --pretty=format:"%h %s" origin/${BRANCH_NAME}..HEAD)
 
-          MESSAGE="📌 PUSH : \`$GITHUB_REF_NAME\`\n👤 작성자: \`$NICKNAME\`\n$COMMITS_ESCAPED"
+          if [ -z "$COMMIT_RANGE" ]; then
+            echo "❗커밋 내역이 비어 있음"
+            exit 0
+          fi
 
+          # 메시지 포맷팅
+          MESSAGE="📌 **PUSH : \`$BRANCH_NAME\`**\n👤 작성자: \`$NICKNAME\`\n"
+          MESSAGE+=$(git log origin/${BRANCH_NAME}..HEAD --pretty=format:"- %h %s" | sed ':a;N;$!ba;s/\n/\\n/g')
+
+          # Discord로 전송
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"$MESSAGE\", \"username\": \"GitNotifier\"}" \
+               -d "{\"content\": \"$MESSAGE\", \"username\": \"PushBot\"}" \
                "$DISCORD_WEBHOOK"
