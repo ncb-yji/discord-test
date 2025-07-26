@@ -36,7 +36,7 @@ jobs:
           esac
 
           # 변경된 커밋 내역 추출 (최초 커밋 포함)
-          COMMITS=$(git log --pretty=format:"- %h %s" "$BEFORE..$AFTER")
+          COMMITS=$(git log --pretty=format:"- %h %s"  "$BEFORE..$AFTER")
 
           if [ -z "$COMMITS" ]; then
             echo "❗커밋 내역이 없음"
